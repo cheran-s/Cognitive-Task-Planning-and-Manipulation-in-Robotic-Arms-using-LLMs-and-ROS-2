@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>6-DOF Industrial Arm | AI Natural Language & 3D Telemetry Dashboard</title>
+  
+  <!-- Modern Industrial Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Self-contained local vendor libraries with fallback -->
+  <script src="lib/three.min.js"></script>
+  <script src="lib/OrbitControls.js"></script>
+  <script src="lib/roslib.min.js"></script>
+</head>
+<body class="dark-industrial-theme">
+  <!-- Top Navigation Header -->
+  <header class="dashboard-header">
+    <div class="header-branding">
+      <div class="logo-mark">
+        <span class="logo-core"></span>
+        <span class="logo-glow"></span>
+      </div>
+      <div>
+        <h1 class="system-title">ARM-X6 <span class="highlight">INDUSTRIAL</span></h1>
+        <p class="system-subtitle">6-DOF Autonomous Robot Arm &bull; Natural Language AI &bull; Three.js Telemetry</p>
+      </div>
+    </div>
+
+    <!-- Live Telemetry Status Badges -->
+    <div class="header-badges">
+      <div class="status-badge" id="ros-status-badge">
+        <span class="status-dot disconnected" id="ros-dot"></span>
+        <span class="status-text" id="ros-status-text">ROS Bridge: Connecting...</span>
+      </div>
+      <div class="status-badge" id="ai-status-badge">
+        <span class="status-dot idle" id="ai-dot"></span>
+        <span class="status-text" id="ai-status-text">AI State: Standby</span>
+      </div>
+      <div class="mode-toggle-group">
+        <button id="sim-mode-toggle" class="mode-btn active" title="Toggle ROS 2 / Browser Simulation Mode">
+          MODE: <span id="current-mode-label">LIVE / AUTO</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <main class="dashboard-layout">
+    
+    <!-- Left Panel: Natural Language, Voice, and Preset Controls -->
+    <aside class="control-panel panel glass-card">
+      <div class="panel-section">
+        <h2 class="section-title">
+          <svg class="icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          AI Voice & Intent Commander
+        </h2>
+
+        <!-- Voice Activation Hub -->
+        <div class="voice-command-card">
+          <button id="voice-record-btn" class="voice-btn" title="Click to speak command">
+            <div class="mic-wave" id="mic-wave-1"></div>
+            <div class="mic-wave" id="mic-wave-2"></div>
+            <svg class="mic-icon" viewBox="0 0 24 24" width="32" height="32">
+              <path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+              <path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+          </button>
+          <div class="voice-status-wrapper">
+            <span class="voice-prompt" id="voice-status-text">Click microphone to speak</span>
+            <span class="transcript-preview" id="transcript-preview">"Ready for speech..."</span>
+          </div>
+        </div>
+
+        <!-- Natural Language Text Input -->
+        <form id="command-form" class="command-form">
+          <div class="input-container">
+            <input 
+              type="text" 
+              id="ai-command-input" 
+              placeholder="e.g. 'Reach forward', 'Pick and place', 'Joint 1 to 45 deg'..." 
+              autocomplete="off"
+            />
+            <button type="submit" id="execute-btn" class="execute-btn">
+              <span>Execute</span>
+              <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+          </div>
+        </form>
+
+        <!-- Command Suggestion Chips -->
+        <div class="quick-chips">
+          <span class="chip-label">Suggestions:</span>
+          <button class="chip" data-cmd="Pick and place">Pick & Place Macro</button>
+          <button class="chip" data-cmd="Bend down and inspect">Inspect Ground</button>
+          <button class="chip" data-cmd="Wave hello">Wave Routine</button>
+          <button class="chip" data-cmd="Joint 1 to 45 degrees">J1 to 45°</button>
+        </div>
+      </div>
+
+      <!-- Quick Actions Grid -->
+      <div class="panel-section">
+        <h2 class="section-title">
+          <svg class="icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Quick Kinematic Presets
+        </h2>
+        <div class="presets-grid">
+          <button class="preset-btn" data-cmd="Home position">
+            <span class="preset-icon">&#8962;</span>
+            <span class="preset-name">Home</span>
+            <span class="preset-desc">Zero Reference</span>
+          </button>
+          <button class="preset-btn" data-cmd="Ready pose">
+            <span class="preset-icon">&#9874;</span>
+            <span class="preset-name">Ready</span>
+            <span class="preset-desc">Standby Pose</span>
+          </button>
+          <button class="preset-btn" data-cmd="Pick pose">
+            <span class="preset-icon">&#10515;</span>
+            <span class="preset-name">Pick Pose</span>
+            <span class="preset-desc">Reach Forward</span>
+          </button>
+          <button class="preset-btn" data-cmd="Bend down">
+            <span class="preset-icon">&#8681;</span>
+            <span class="preset-name">Bend Down</span>
+            <span class="preset-desc">Ground Inspection</span>
+          </button>
+          <button class="preset-btn gripper-action" data-cmd="Open hand">
+            <span class="preset-icon">&#10065;</span>
+            <span class="preset-name">Open Hand</span>
+            <span class="preset-desc">Release Claws</span>
+          </button>
+          <button class="preset-btn gripper-action" data-cmd="Close hand">
+            <span class="preset-icon">&#10066;</span>
+            <span class="preset-name">Close Hand</span>
+            <span class="preset-desc">Grasp Object</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Emergency Stop Button -->
+      <div class="panel-section">
+        <button id="estop-btn" class="estop-btn">
+          <span class="estop-pulse"></span>
+          <span class="estop-text">EMERGENCY STOP (HALT)</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Center Panel: High-Performance Native Three.js 3D Viewport -->
+    <section class="viewport-panel panel glass-card">
+      <div class="viewport-header">
+        <div class="viewport-title">
+          <span class="viewport-indicator"></span>
+          <span>NATIVE 3D DIGITAL TWIN &bull; THREE.JS RENDERER</span>
+        </div>
+        <div class="viewport-tools">
+          <button id="reset-cam-btn" class="tool-btn" title="Reset Camera View">Reset View</button>
+          <button id="toggle-grid-btn" class="tool-btn" title="Toggle Floor Grid">Grid</button>
+          <button id="toggle-shadows-btn" class="tool-btn" title="Toggle Dynamic Shadows">Lighting</button>
+        </div>
+      </div>
+
+      <!-- 3D Canvas Container -->
+      <div id="three-canvas-container" class="three-container">
+        <!-- Floating Overlay Telemetry HUD -->
+        <div class="canvas-overlay-hud">
+          <div class="hud-stat-box">
+            <span class="hud-label">TCP POSITION (X, Y, Z)</span>
+            <span class="hud-value" id="hud-tcp-coords">X: +0.00  Y: +0.00  Z: +0.81 m</span>
+          </div>
+          <div class="hud-stat-box">
+            <span class="hud-label">ACTIVE PLANNING INTENT</span>
+            <span class="hud-value" id="hud-active-intent">STANDBY</span>
+          </div>
+          <div class="hud-stat-box">
+            <span class="hud-label">TRAJECTORY INTERPOLATION</span>
+            <span class="hud-value" id="hud-traj-status">IDLE (0.00s)</span>
+          </div>
+        </div>
+
+        <div class="controls-hint">
+          <span>Rotate: Left Drag &bull; Pan: Right Drag &bull; Zoom: Scroll Wheel</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Panel: Real-Time Joint Telemetry & Live Execution Log -->
+    <aside class="telemetry-panel panel glass-card">
+      <div class="panel-section">
+        <h2 class="section-title">
+          <svg class="icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+          Joint Telemetry & Manual Override
+        </h2>
+        
+        <!-- Individual Joint Sliders & Readouts -->
+        <div class="joint-telemetry-list" id="joints-list">
+          <!-- Populated dynamically by script.js -->
+        </div>
+
+        <div class="joint-controls-actions">
+          <button id="sync-sliders-btn" class="action-btn secondary">Sync to Live</button>
+          <button id="apply-sliders-btn" class="action-btn primary">Send Joint Angles</button>
+        </div>
+      </div>
+
+      <!-- Live Execution Log Terminal -->
+      <div class="panel-section log-section">
+        <div class="log-header">
+          <h2 class="section-title">
+            <svg class="icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M4 17h16v2H4zm13-6.17L15.59 9.4 12 13 8.41 9.4 7 10.83 12 15.83z"/></svg>
+            Live Execution & ROS 2 Log
+          </h2>
+          <button id="clear-log-btn" class="clear-btn">Clear</button>
+        </div>
+        <div id="log-terminal" class="terminal-container">
+          <div class="log-entry log-sys">[SYS] ARM-X6 Industrial Telemetry Initialized.</div>
+          <div class="log-entry log-info">[INFO] Native Three.js WebGL scene created.</div>
+          <div class="log-entry log-ros">[ROS] Attempting connection to ws://localhost:9090...</div>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Application Script -->
+  <script src="script.js"></script>
+</body>
+</html>
